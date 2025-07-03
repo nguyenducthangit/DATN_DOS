@@ -5,8 +5,11 @@ import logging
 import socket
 import threading
 import re
+from includes import dict_34_classes
 
 logger = logging.getLogger('DDoSDetector')
+
+DICT_LABEL_TO_NAME = {v: k for k, v in dict_34_classes.items()}
 
 class DDoSDetector:
     def __init__(self):
@@ -91,7 +94,7 @@ class DDoSDetector:
             if len(self.alerts) > 100:
                 self.alerts = self.alerts[-100:]
                 
-            self.current_status = f"Under Attack ({attack_type})"
+            self.update_status(attack_type)
             self.last_attack_time = time.time()
             self.attack_stats['total_attacks'] += 1
             self.attack_stats['last_attack'] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -224,3 +227,14 @@ class DDoSDetector:
     
     def shutdown(self):
         self.running = False
+
+    def update_status(self, attack_type=None):
+        if attack_type is not None:
+            # Nếu attack_type là số, map sang tên chuỗi
+            if isinstance(attack_type, int):
+                attack_type_str = DICT_LABEL_TO_NAME.get(attack_type, str(attack_type))
+            else:
+                attack_type_str = str(attack_type)
+            self.current_status = f"Under Attack ({attack_type_str})"
+        else:
+            self.current_status = "Normal"
