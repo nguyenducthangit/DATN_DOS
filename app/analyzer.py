@@ -95,6 +95,7 @@ class TrafficAnalyzer:
             del self.flows[flow_id]
 
     def extract_features_by_flow(self, flow_id=None):
+        from includes import X_columns
         features_by_flow = {}
         
         if flow_id:
@@ -151,35 +152,42 @@ class TrafficAnalyzer:
             
             ttl = max(pkt['ttl'] for pkt in packets) if any(pkt.get('ttl') for pkt in packets) else 0
             std = np.std(packet_sizes) if len(packet_sizes) > 1 else 0
-            
-            features_by_flow[fid] = {
-                'flow id': fid,
-                'source ip': src_ip,
-                'destination ip': dst_ip,
-                'Header_Length': header_length,
-                'Protocol Type': protocol,
-                'Time_To_Live': ttl,
-                'Rate': flow_packets_s,
-                'fin_flag_number': fin_flag,
-                'syn_flag_number': syn_flag,
-                'rst_flag_number': rst_flag,
-                'psh_flag_number': psh_flag,
-                'ack_flag_number': ack_flag,
-                'HTTP': is_http,
-                'HTTPS': is_https,
-                'TCP': is_tcp,
-                'UDP': is_udp,
-                'ICMP': is_icmp,
-                'Tot sum': tot_sum,
-                'Min': min_size,
-                'Max': max_size,
-                'AVG': avg_size,
-                'Std': std,
-                'Tot size': tot_size,
-                'IAT': iat,
-                'Number': total_packets,
-                'attack_type': None
-            }
+
+            # Tạo dict đặc trưng mặc định 0
+            features = {col: 0 for col in X_columns}
+            # Gán các giá trị tính được, ép kiểu int nếu cần
+            features['flow_duration'] = float(time_span)
+            features['Header_Length'] = int(header_length)
+            features['Protocol Type'] = int({'TCP': 1, 'UDP': 2, 'ICMP': 3, 'Other': 0}.get(protocol, 0))
+            features['Duration'] = float(time_span)
+            features['Rate'] = float(flow_packets_s)
+            features['Srate'] = float(flow_packets_s)
+            features['Drate'] = float(flow_bytes_s)
+            features['fin_flag_number'] = int(fin_flag)
+            features['syn_flag_number'] = int(syn_flag)
+            features['rst_flag_number'] = int(rst_flag)
+            features['psh_flag_number'] = int(psh_flag)
+            features['ack_flag_number'] = int(ack_flag)
+            features['HTTP'] = int(is_http)
+            features['HTTPS'] = int(is_https)
+            features['TCP'] = int(is_tcp)
+            features['UDP'] = int(is_udp)
+            features['ICMP'] = int(is_icmp)
+            features['Tot sum'] = float(tot_sum)
+            features['Min'] = float(min_size)
+            features['Max'] = float(max_size)
+            features['AVG'] = float(avg_size)
+            features['Std'] = float(std)
+            features['Tot size'] = float(tot_size)
+            features['IAT'] = float(iat)
+            features['Number'] = int(total_packets)
+            # Các đặc trưng còn lại giữ nguyên 0
+
+            features_by_flow[fid] = features
+            features_by_flow[fid]['flow id'] = fid
+            features_by_flow[fid]['source ip'] = src_ip
+            features_by_flow[fid]['destination ip'] = dst_ip
+            features_by_flow[fid]['attack_type'] = None
         return features_by_flow
 
     def process_and_predict(self, features_by_flow):

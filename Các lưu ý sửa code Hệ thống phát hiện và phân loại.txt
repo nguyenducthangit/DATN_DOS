@@ -1,0 +1,25 @@
+Các lưu ý:
+Mô hình hiện tại: Hệ thống sử dụng mô hình RandomForestClassifier (được lưu trong model_rf.pkl) cùng với scaler (scaler.pkl) và label encoder (label_encoder.pkl) trong thư mục models.
+Nơi sử dụng mô hình: Mô hình được tải và sử dụng trong analyzer.py (class TrafficAnalyzer), cụ thể trong phương thức load_model và process_and_predict.
+Dữ liệu đầu vào: Mô hình nhận một vector đặc trưng (feature vector) gồm 23 đặc trưng, đã được chuẩn hóa bằng scaler và dự đoán loại tấn công (attack type) thông qua label encoder.
+Đầu ra: Mô hình trả về xác suất tấn công (predict_proba) và nhãn dự đoán (predict), được giải mã thành loại tấn công (e.g., "benign", "DDoS", etc.) bằng label encoder.
+
+* Nếu thay mô hình mới:
+- Nơi cần lưu mô hình:
+	+ Lưu mô hình mới vào models/new_model.pkl (hoặc tên khác, nhưng cần cập nhật đường dẫn trong mã).
+	+ Lưu scaler mới vào models/new_scaler.pkl.
+	+ Lưu label encoder mới vào models/new_label_encoder.pkl.
+
+- Sửa phương thức load_model trong analyzer.py (nơi load mô hình + phân tích gói tin được đưa vào)
+- Sửa phương thức process_and_predict trong analyzer.py (Chỗ này phải sửa trích xuất đặc trưng phù hợp với mô hình mới)
+
+- Cập nhật detector.py
+	+ Sửa phương thức get_feature_importance (để hiển thị các đặc trưng quan trong có trong model)
+
+- Cập nhật config.py
+	+ Sửa lại đường dẫn đến model mới
+
+- Kiểm tra các tham số dòng lệnh trong utils.py
+	+ File utils.py xử lý các tham số dòng lệnh, bao gồm đường dẫn đến mô hình, scaler và encoder
+
+- Sửa lại dashboard hiển thị (có thể tùy chỉnh theo nhu cầu về mô hình)
