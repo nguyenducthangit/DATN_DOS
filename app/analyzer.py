@@ -212,13 +212,19 @@ class TrafficAnalyzer:
                 try:
                     attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
                 except Exception:
-                    # Nếu label encoder trả về số, map lại sang tên chuỗi
                     attack_type = DICT_LABEL_TO_NAME.get(y_pred_enc, str(y_pred_enc))
                 features['attack_type'] = attack_type
 
-                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
-                is_attack = attack_type != 'BenignTraffic'
+                # Chỉ coi là tấn công nếu attack_type hợp lệ và khác BenignTraffic
+                if attack_type in dict_34_classes and attack_type != 'BenignTraffic':
+                    is_attack = True
+                else:
+                    if attack_type not in dict_34_classes:
+                        logger.warning(f"Unknown attack_type predicted: {attack_type}. Treated as benign.")
+                    is_attack = False
                 priority = 1 if is_attack else 0
+
+                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
 
                 logger.info(f"Processed flow {flow_id}: Src={features.get('source ip','')}, Dst={features.get('destination ip','')}, "
                             f"Rate={features.get('Rate',0):.2f}, Attack prob={attack_prob.max():.2f}, "
