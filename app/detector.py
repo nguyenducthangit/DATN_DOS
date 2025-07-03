@@ -230,10 +230,11 @@ class DDoSDetector:
 
     def update_status(self, attack_type=None):
         if attack_type is not None:
-            # Nếu attack_type là số, map sang tên chuỗi
-            if isinstance(attack_type, int):
-                attack_type_str = DICT_LABEL_TO_NAME.get(attack_type, str(attack_type))
-            else:
+            # Nếu attack_type là số hoặc chuỗi số, map sang tên chuỗi
+            try:
+                attack_type_int = int(attack_type)
+                attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
+            except (ValueError, TypeError):
                 attack_type_str = str(attack_type)
             self.current_status = f"Under Attack ({attack_type_str})"
         else:
