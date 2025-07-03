@@ -9,9 +9,12 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import joblib
 import os
-from includes import X_columns  # Sử dụng danh sách đặc trưng chuẩn
+from includes import X_columns, dict_34_classes  # Sử dụng danh sách đặc trưng chuẩn
 
 logger = logging.getLogger('DDoSDetector')
+
+# Tạo dict map ngược số -> tên loại tấn công
+DICT_LABEL_TO_NAME = {v: k for k, v in dict_34_classes.items()}
 
 class TrafficAnalyzer:
     def __init__(self, interface, window_size=1, detector=None):
@@ -95,7 +98,6 @@ class TrafficAnalyzer:
             del self.flows[flow_id]
 
     def extract_features_by_flow(self, flow_id=None):
-        from includes import X_columns
         features_by_flow = {}
         
         if flow_id:
@@ -200,21 +202,23 @@ class TrafficAnalyzer:
 
         for flow_id, features in features_by_flow.items():
             try:
-                # Tạo feature vector đúng thứ tự đặc trưng
                 feature_vector = [features.get(col, 0) for col in X_columns]
                 feature_vector_df = pd.DataFrame([feature_vector], columns=X_columns)
-                feature_vector_array = feature_vector_df.values
-                feature_vector_scaled = self.scaler.transform(feature_vector_array)
+                feature_vector_scaled = self.scaler.transform(feature_vector_df)
 
                 # Dự đoán
-                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
                 y_pred_enc = self.model.predict(feature_vector_scaled)[0]
-                attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
+                # Giải mã tên loại tấn công (chuỗi)
+                try:
+                    attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
+                except Exception:
+                    # Nếu label encoder trả về số, map lại sang tên chuỗi
+                    attack_type = DICT_LABEL_TO_NAME.get(y_pred_enc, str(y_pred_enc))
+                features['attack_type'] = attack_type
 
-                # Phân loại 2 lớp (benign/attack) mặc định
+                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
                 is_attack = attack_type != 'BenignTraffic'
                 priority = 1 if is_attack else 0
-                features['attack_type'] = attack_type
 
                 logger.info(f"Processed flow {flow_id}: Src={features.get('source ip','')}, Dst={features.get('destination ip','')}, "
                             f"Rate={features.get('Rate',0):.2f}, Attack prob={attack_prob.max():.2f}, "
