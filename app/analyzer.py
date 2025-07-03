@@ -209,18 +209,16 @@ class TrafficAnalyzer:
                 # Dự đoán
                 y_pred_enc = self.model.predict(feature_vector_scaled)[0]
                 # Giải mã tên loại tấn công (chuỗi)
-                # Nếu nhãn là số, map sang tên chuỗi; nếu là chuỗi, giữ nguyên
-                if isinstance(y_pred_enc, (int, np.integer)):
+                try:
+                    attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
+                except Exception:
+                    # Nếu label encoder trả về số, map lại sang tên chuỗi
                     attack_type = DICT_LABEL_TO_NAME.get(y_pred_enc, str(y_pred_enc))
-                else:
-                    attack_type = str(y_pred_enc)
                 features['attack_type'] = attack_type
 
-                # Chỉ coi là tấn công nếu attack_type khác BenignTraffic
+                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
                 is_attack = attack_type != 'BenignTraffic'
                 priority = 1 if is_attack else 0
-
-                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
 
                 logger.info(f"Processed flow {flow_id}: Src={features.get('source ip','')}, Dst={features.get('destination ip','')}, "
                             f"Rate={features.get('Rate',0):.2f}, Attack prob={attack_prob.max():.2f}, "
@@ -247,6 +245,12 @@ class TrafficAnalyzer:
     def shutdown(self):
         self.running = False
 
+def run_traffic_analyzer(analyzer):
+    try:
+        logger.info(f"Starting TrafficAnalyzer on interface: {analyzer.interface}")
+        analyzer.start_capture()
+    except Exception as e:
+        logger.error(f"Error in run_traffic_analyzer: {e}", exc_info=True)
 def run_traffic_analyzer(analyzer):
     try:
         logger.info(f"Starting TrafficAnalyzer on interface: {analyzer.interface}")
