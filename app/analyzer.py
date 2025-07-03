@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import joblib
 import os
+from includes import X_columns  # Sử dụng danh sách đặc trưng chuẩn
 
 logger = logging.getLogger('DDoSDetector')
 
@@ -191,64 +192,26 @@ class TrafficAnalyzer:
 
         for flow_id, features in features_by_flow.items():
             try:
-                feature_vector = [
-                    features.get('Header_Length', 0),
-                    features.get('Protocol Type', 'Other'),
-                    features.get('Time_To_Live', 0),
-                    features.get('Rate', 0),
-                    features.get('fin_flag_number', 0),
-                    features.get('syn_flag_number', 0),
-                    features.get('rst_flag_number', 0),
-                    features.get('psh_flag_number', 0),
-                    features.get('ack_flag_number', 0),
-                    features.get('HTTP', 0),
-                    features.get('HTTPS', 0),
-                    features.get('TCP', 0),
-                    features.get('UDP', 0),
-                    features.get('ICMP', 0),
-                    features.get('Tot sum', 0),
-                    features.get('Min', 0),
-                    features.get('Max', 0),
-                    features.get('AVG', 0),
-                    features.get('Std', 0),
-                    features.get('Tot size', 0),
-                    features.get('IAT', 0),
-                    features.get('Number', 0),
-                    0  # Placeholder for the 23rd feature
-                ]
-                
-                protocol = features.get('Protocol Type', 'Other')
-                if protocol not in ['TCP', 'UDP', 'ICMP', 'Other']:
-                    protocol = 'Other'
-                feature_vector[1] = {'TCP': 1, 'UDP': 2, 'ICMP': 3, 'Other': 0}.get(protocol, 0)
-                
-                feature_names = [
-                    'Header_Length', 'Protocol Type', 'Time_To_Live', 'Rate',
-                    'fin_flag_number', 'syn_flag_number', 'rst_flag_number', 'psh_flag_number',
-                    'ack_flag_number', 'HTTP', 'HTTPS', 'TCP', 'UDP', 'ICMP',
-                    'Tot sum', 'Min', 'Max', 'AVG', 'Std', 'Tot size', 'IAT', 'Number',
-                    'Placeholder'  # Name for the 23rd feature
-                ]
-                feature_vector_df = pd.DataFrame([feature_vector], columns=feature_names)
-                
-                # Convert DataFrame to NumPy array to avoid feature names warning
+                # Tạo feature vector đúng thứ tự đặc trưng
+                feature_vector = [features.get(col, 0) for col in X_columns]
+                feature_vector_df = pd.DataFrame([feature_vector], columns=X_columns)
                 feature_vector_array = feature_vector_df.values
-                
                 feature_vector_scaled = self.scaler.transform(feature_vector_array)
-                
+
+                # Dự đoán
                 attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
                 y_pred_enc = self.model.predict(feature_vector_scaled)[0]
                 attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
-                
-                is_attack = attack_type != 'benign'
+
+                # Phân loại 2 lớp (benign/attack) mặc định
+                is_attack = attack_type != 'BenignTraffic'
                 priority = 1 if is_attack else 0
-                
                 features['attack_type'] = attack_type
-                
-                logger.info(f"Processed flow {flow_id}: Src={features['source ip']}, Dst={features['destination ip']}, "
-                           f"Rate={features['Rate']:.2f}, Attack prob={attack_prob.max():.2f}, "
-                           f"Attack type={attack_type}, Is attack={is_attack}")
-                
+
+                logger.info(f"Processed flow {flow_id}: Src={features.get('source ip','')}, Dst={features.get('destination ip','')}, "
+                            f"Rate={features.get('Rate',0):.2f}, Attack prob={attack_prob.max():.2f}, "
+                            f"Attack type={attack_type}, Is attack={is_attack}")
+
                 try:
                     detector_queue.put((features, is_attack, priority), block=False)
                 except Full:
