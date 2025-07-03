@@ -209,19 +209,15 @@ class TrafficAnalyzer:
                 # Dự đoán
                 y_pred_enc = self.model.predict(feature_vector_scaled)[0]
                 # Giải mã tên loại tấn công (chuỗi)
-                try:
-                    attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
-                except Exception:
+                # Nếu nhãn là số, map sang tên chuỗi; nếu là chuỗi, giữ nguyên
+                if isinstance(y_pred_enc, (int, np.integer)):
                     attack_type = DICT_LABEL_TO_NAME.get(y_pred_enc, str(y_pred_enc))
+                else:
+                    attack_type = str(y_pred_enc)
                 features['attack_type'] = attack_type
 
-                # Chỉ coi là tấn công nếu attack_type hợp lệ và khác BenignTraffic
-                if attack_type in dict_34_classes and attack_type != 'BenignTraffic':
-                    is_attack = True
-                else:
-                    if attack_type not in dict_34_classes:
-                        logger.warning(f"Unknown attack_type predicted: {attack_type}. Treated as benign.")
-                    is_attack = False
+                # Chỉ coi là tấn công nếu attack_type khác BenignTraffic
+                is_attack = attack_type != 'BenignTraffic'
                 priority = 1 if is_attack else 0
 
                 attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
