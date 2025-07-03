@@ -84,10 +84,12 @@ class DDoSDetector:
                 return
 
             attack_type = flow_data['attack_type']
+            attack_type_int = int(attack_type)
+            attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
             self.alerts.append({
                 'time': time.strftime('%H:%M:%S'),
                 'source ip': source_ip,
-                'message': f'DDoS Attack Detected! Type: {attack_type}, Source IP: {source_ip}, Rate: {flow_data["Rate"]:.2f} packets/s',
+                'message': f' Attack Detected! Type: {attack_type_str}, Source IP: {source_ip}, Rate: {flow_data["Rate"]:.2f} packets/s',
                 'mitigation': f'Suggested: Block traffic from {source_ip}'
             })
             
@@ -236,6 +238,6 @@ class DDoSDetector:
                 attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
             except (ValueError, TypeError):
                 attack_type_str = str(attack_type)
-            self.current_status = f"Under Attack ({attack_type_str})"
+            self.current_status = f" Attack {attack_type_str}"
         else:
             self.current_status = "Normal"

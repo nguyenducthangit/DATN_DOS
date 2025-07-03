@@ -8,7 +8,7 @@ def setup_dashboard(flask_app, detector, config):
     
     dash_app.layout = html.Div([
         html.Div([
-            html.H1("DDoS Detection Dashboard", className="dashboard-header"),
+            html.H1("Attack Detection Dashboard", className="dashboard-header"),
             html.Div(id="last-updated", className="last-updated"),
             html.A("Back to Home", href="/", className="back-to-home-link")
         ], className="header-container"),
@@ -55,7 +55,7 @@ def setup_dashboard(flask_app, detector, config):
             
             html.Div([
                 html.Div([
-                    html.H3("DDoS Alerts"), 
+                    html.H3("Attack Alerts"), 
                     html.Div(id='alerts-container', className='alerts-container scrollable')
                 ], className='panel alerts-panel')
             ], className='right-column')
