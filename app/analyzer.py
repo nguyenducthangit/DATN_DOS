@@ -196,6 +196,24 @@ class TrafficAnalyzer:
     def process_and_predict(self, features_by_flow):
         if not self.model or not self.detector or not self.scaler or not self.label_encoder or not features_by_flow:
             logger.warning("Cannot predict: model, detector, scaler, label_encoder, or features missing")
+            # Nếu không có model, vẫn xử lý dữ liệu để test
+            if self.config and self.config.debug:
+                logger.info("Debug mode: Processing without model")
+                for flow_id, features in features_by_flow.items():
+                    # Giả lập tấn công nếu rate cao
+                    if features.get('Rate', 0) > 200:
+                        features['attack_type'] = 'DDoS-SYN_Flood'
+                        is_attack = True
+                        logger.info(f"Debug: Simulating attack for flow {flow_id} with rate {features.get('Rate', 0)}")
+                    else:
+                        features['attack_type'] = 'BenignTraffic'
+                        is_attack = False
+                    
+                    try:
+                        from utils import detector_queue
+                        detector_queue.put((features, is_attack, 1 if is_attack else 0), block=False)
+                    except Exception as e:
+                        logger.error(f"Error in debug mode: {e}")
             return
 
         from utils import detector_queue
@@ -221,8 +239,8 @@ class TrafficAnalyzer:
                 features['attack_type'] = attack_type
 
                 # Thêm ngưỡng tin cậy để giảm false positive
-                CONFIDENCE_THRESHOLD = self.config.confidence_threshold if self.config else 0.7
-                RATE_THRESHOLD = self.config.rate_threshold if self.config else 100
+                CONFIDENCE_THRESHOLD = self.config.confidence_threshold if self.config else 0.5
+                RATE_THRESHOLD = self.config.rate_threshold if self.config else 50
                 
                 is_attack = (attack_type != 'BenignTraffic' and 
                            max_prob > CONFIDENCE_THRESHOLD and 
