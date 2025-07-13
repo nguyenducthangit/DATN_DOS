@@ -85,8 +85,26 @@ class DDoSDetector:
                 return
 
             attack_type = flow_data['attack_type']
-            attack_type_int = int(attack_type)
-            attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
+            
+            # Xử lý attack_type - có thể là số hoặc chuỗi
+            try:
+                if isinstance(attack_type, str):
+                    # Nếu là chuỗi, thử chuyển thành số
+                    if attack_type.isdigit():
+                        attack_type_int = int(attack_type)
+                        attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, attack_type)
+                    else:
+                        # Nếu là chuỗi tên tấn công, giữ nguyên
+                        attack_type_str = attack_type
+                else:
+                    # Nếu là số
+                    attack_type_int = int(attack_type)
+                    attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
+            except (ValueError, TypeError):
+                # Nếu không chuyển đổi được, sử dụng giá trị gốc
+                attack_type_str = str(attack_type)
+            
+            logger.info(f"Processing attack: original={attack_type}, processed={attack_type_str}")
             
             # Phân loại mức độ nghiêm trọng của tấn công
             severity = self._get_attack_severity(attack_type_str)
@@ -119,7 +137,7 @@ class DDoSDetector:
             if len(self.alerts) > (self.config.max_alerts if self.config else 100):
                 self.alerts = self.alerts[-(self.config.max_alerts if self.config else 100):]
                 
-            self.update_status(attack_type)
+            self.update_status(attack_type_str)  # Sử dụng attack_type_str thay vì attack_type
             self.last_attack_time = time.time()
             self.attack_stats['total_attacks'] += 1
             self.attack_stats['last_attack'] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -137,7 +155,7 @@ class DDoSDetector:
                 self.alerts[-1]['mitigation'] = f'Blocked traffic from {source_ip}'
                 logger.warning(f"Blocked IP: {source_ip}")
                 
-            logger.warning(f"Attack detected: Type={attack_type}, Src={source_ip}, Rate={flow_data['Rate']:.2f}, "
+            logger.warning(f"Attack detected: Type={attack_type_str}, Src={source_ip}, Rate={flow_data['Rate']:.2f}, "
                           f"Severity={severity}, Blocked={source_ip in self.blocked_ips}")
 
     def _block_ip(self, ip):

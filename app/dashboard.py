@@ -98,12 +98,16 @@ def setup_dashboard(flask_app, detector, config):
                 last_alert_timestamp = time.mktime(time.localtime(current_time)) - time.mktime(last_alert_time)
                 display_attack = last_alert_timestamp < 60
 
-            if detector.current_status == "Normal" or (not alerts and last_alert_timestamp > 60):
+            # Cải thiện logic hiển thị status
+            if detector.current_status == "Normal" and not alerts:
                 status_color = "#2ecc71"
                 status_text = "NORMAL"
-            else:
+            elif detector.current_status != "Normal" or alerts:
                 status_color = "#e74c3c"
-                status_text = detector.current_status
+                status_text = detector.current_status if detector.current_status != "Normal" else "UNDER ATTACK"
+            else:
+                status_color = "#2ecc71"
+                status_text = "NORMAL"
 
             status = html.Div(
                 status_text, 

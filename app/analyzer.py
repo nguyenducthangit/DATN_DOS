@@ -202,11 +202,11 @@ class TrafficAnalyzer:
                 for flow_id, features in features_by_flow.items():
                     # Giả lập tấn công nếu rate cao
                     if features.get('Rate', 0) > 200:
-                        features['attack_type'] = 'DDoS-SYN_Flood'
+                        features['attack_type'] = 'DDoS-SYN_Flood'  # Sử dụng tên chuỗi
                         is_attack = True
                         logger.info(f"Debug: Simulating attack for flow {flow_id} with rate {features.get('Rate', 0)}")
                     else:
-                        features['attack_type'] = 'BenignTraffic'
+                        features['attack_type'] = 'BenignTraffic'  # Sử dụng tên chuỗi
                         is_attack = False
                     
                     try:
