@@ -98,16 +98,12 @@ def setup_dashboard(flask_app, detector, config):
                 last_alert_timestamp = time.mktime(time.localtime(current_time)) - time.mktime(last_alert_time)
                 display_attack = last_alert_timestamp < 60
 
-            # Cải thiện logic hiển thị status
-            if detector.current_status == "Normal" and not alerts:
+            if detector.current_status == "Normal" or (not alerts and last_alert_timestamp > 60):
                 status_color = "#2ecc71"
                 status_text = "NORMAL"
-            elif detector.current_status != "Normal" or alerts:
-                status_color = "#e74c3c"
-                status_text = detector.current_status if detector.current_status != "Normal" else "UNDER ATTACK"
             else:
-                status_color = "#2ecc71"
-                status_text = "NORMAL"
+                status_color = "#e74c3c"
+                status_text = detector.current_status
 
             status = html.Div(
                 status_text, 
@@ -123,32 +119,14 @@ def setup_dashboard(flask_app, detector, config):
             for alert in reversed(alerts[-10:]):
                 ip = detector.extract_ip_from_message(alert['message'])
                 attack_count = ip_attack_counts.get(ip, 0) if ip else 0
-                
-                # Xác định màu sắc và icon dựa trên mức độ nghiêm trọng
-                severity = alert.get('severity', 1)
-                if severity >= 4:
-                    alert_class = "severe"
-                    icon = "🚨"
-                elif severity >= 3:
-                    alert_class = "high"
-                    icon = "⚠️"
-                else:
-                    alert_class = "low"
-                    icon = "ℹ️"
-                
-                # Thêm icon blocked nếu IP bị chặn
-                if "Blocked" in alert['mitigation']:
-                    icon = "🚫"
-                    alert_class = "blocked"
-                
                 alert_items.append(
                     html.Div([
                         html.Span(f"[{alert['time']}]", className="alert-time"),
-                        html.Span(icon, className="alert-icon"),
+                        html.Span("🚫 " if "Blocked" in alert['mitigation'] else "⚠️ ", className="alert-icon"),
                         html.Span(f"{alert['message']}", className="alert-message"),
                         html.Span(f"Attacks: {attack_count}", className="alert-count"),
                         html.Span(f"Mitigation: {alert['mitigation']}", className="alert-mitigation")
-                    ], className=f"alert-item {alert_class} new-alert")
+                    ], className=f"alert-item {'severe' if 'Blocked' in alert['mitigation'] else 'warning'} new-alert")
                 )
 
             attack_stats = detector.get_attack_stats()
@@ -174,30 +152,6 @@ def setup_dashboard(flask_app, detector, config):
                         className="stat-value small-text")
                 ], className="stat-item")
             ]
-            
-            # Thêm thống kê phân loại tấn công
-            attack_types = {}
-            for alert in alerts:
-                attack_type = alert.get('attack_type', 'Unknown')
-                attack_types[attack_type] = attack_types.get(attack_type, 0) + 1
-            
-            if attack_types:
-                attack_type_stats = [
-                    html.Div([
-                        html.Div("Attack Types", className="stat-label"),
-                        html.Div("", className="stat-value")
-                    ], className="stat-item header"),
-                ]
-                
-                for attack_type, count in sorted(attack_types.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    attack_type_stats.append(
-                        html.Div([
-                            html.Div(attack_type, className="stat-label small"),
-                            html.Div(str(count), className="stat-value small")
-                        ], className="stat-item")
-                    )
-                
-                stats_items.extend(attack_type_stats)
 
             top_ips = detector.get_top_ips()
             ip_items = [

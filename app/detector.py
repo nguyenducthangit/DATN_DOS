@@ -12,7 +12,7 @@ logger = logging.getLogger('DDoSDetector')
 DICT_LABEL_TO_NAME = {v: k for k, v in dict_34_classes.items()}
 
 class DDoSDetector:
-    def __init__(self, config=None):
+    def __init__(self):
         self.traffic_data = pd.DataFrame({
             'timestamp': [], 'flow id': [], 'source ip': [], 'destination ip': [],
             'Header_Length': [], 'Protocol Type': [], 'Time_To_Live': [], 'Rate': [],
@@ -29,7 +29,6 @@ class DDoSDetector:
         self.data_lock = Lock()
         self.temp_data = []
         self.running = True
-        self.config = config
         self.local_ip = socket.gethostbyname(socket.gethostname())
         logger.info(f"Local IP detected: {self.local_ip}")
         self.last_attack_time = None
@@ -85,78 +84,33 @@ class DDoSDetector:
                 return
 
             attack_type = flow_data['attack_type']
-            
-            # Xử lý attack_type - có thể là số hoặc chuỗi
-            try:
-                if isinstance(attack_type, str):
-                    # Nếu là chuỗi, thử chuyển thành số
-                    if attack_type.isdigit():
-                        attack_type_int = int(attack_type)
-                        attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, attack_type)
-                    else:
-                        # Nếu là chuỗi tên tấn công, giữ nguyên
-                        attack_type_str = attack_type
-                else:
-                    # Nếu là số
-                    attack_type_int = int(attack_type)
-                    attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
-            except (ValueError, TypeError):
-                # Nếu không chuyển đổi được, sử dụng giá trị gốc
-                attack_type_str = str(attack_type)
-            
-            logger.info(f"Processing attack: original={attack_type}, processed={attack_type_str}")
-            
-            # Phân loại mức độ nghiêm trọng của tấn công
-            severity = self._get_attack_severity(attack_type_str)
-            
-            # Kiểm tra xem IP này đã bị tấn công gần đây chưa
-            recent_attacks = [alert for alert in self.alerts[-20:] 
-                            if self.extract_ip_from_message(alert['message']) == source_ip]
-            
-            # Nếu IP này đã có tấn công trong 30 giây qua, chỉ cập nhật nếu tấn công mới nghiêm trọng hơn
-            cooldown_seconds = self.config.alert_cooldown_seconds if self.config else 30
-            if recent_attacks:
-                last_attack_time = time.strptime(recent_attacks[-1]['time'], '%H:%M:%S')
-                time_diff = time.time() - time.mktime(last_attack_time)
-                if time_diff < cooldown_seconds:  # Sử dụng cấu hình
-                    # Chỉ cập nhật nếu tấn công mới nghiêm trọng hơn
-                    last_severity = self._get_attack_severity(recent_attacks[-1]['message'])
-                    if severity <= last_severity:
-                        logger.debug(f"Skipping less severe attack from {source_ip}: {attack_type_str}")
-                        return
-            
+            attack_type_int = int(attack_type)
+            attack_type_str = DICT_LABEL_TO_NAME.get(attack_type_int, str(attack_type))
             self.alerts.append({
                 'time': time.strftime('%H:%M:%S'),
                 'source ip': source_ip,
-                'message': f' Attack Detected! Type: {attack_type_str}, Source IP: {source_ip}, Rate: {flow_data["Rate"]:.2f} packets/s, Severity: {severity}',
-                'mitigation': f'Suggested: Block traffic from {source_ip}',
-                'severity': severity,
-                'attack_type': attack_type_str
+                'message': f' Attack Detected! Type: {attack_type_str}, Source IP: {source_ip}, Rate: {flow_data["Rate"]:.2f} packets/s',
+                'mitigation': f'Suggested: Block traffic from {source_ip}'
             })
             
-            if len(self.alerts) > (self.config.max_alerts if self.config else 100):
-                self.alerts = self.alerts[-(self.config.max_alerts if self.config else 100):]
+            if len(self.alerts) > 100:
+                self.alerts = self.alerts[-100:]
                 
-            self.update_status(attack_type_str)  # Sử dụng attack_type_str thay vì attack_type
+            self.update_status(attack_type)
             self.last_attack_time = time.time()
             self.attack_stats['total_attacks'] += 1
             self.attack_stats['last_attack'] = time.strftime('%Y-%m-%d %H:%M:%S')
             
-            # Chỉ block IP nếu tấn công nghiêm trọng và rate cao
-            block_rate_threshold = self.config.block_rate_threshold if self.config else 1000
-            block_severity_threshold = self.config.block_severity_threshold if self.config else 3
-            
             if (source_ip not in self.blocked_ips and 
-                flow_data['Rate'] > block_rate_threshold and 
-                severity >= block_severity_threshold):  # Sử dụng cấu hình
+                flow_data['Rate'] > 1000):
                 self.blocked_ips.add(source_ip)
                 self.attack_stats['blocked_ips'] = len(self.blocked_ips)
                 self._block_ip(source_ip)
                 self.alerts[-1]['mitigation'] = f'Blocked traffic from {source_ip}'
                 logger.warning(f"Blocked IP: {source_ip}")
                 
-            logger.warning(f"Attack detected: Type={attack_type_str}, Src={source_ip}, Rate={flow_data['Rate']:.2f}, "
-                          f"Severity={severity}, Blocked={source_ip in self.blocked_ips}")
+            logger.warning(f"Attack detected: Type={attack_type}, Src={source_ip}, Rate={flow_data['Rate']:.2f}, "
+                          f"Blocked={source_ip in self.blocked_ips}")
 
     def _block_ip(self, ip):
         import os
@@ -287,30 +241,3 @@ class DDoSDetector:
             self.current_status = f" Attack {attack_type_str}"
         else:
             self.current_status = "Normal"
-
-    def _get_attack_severity(self, attack_type):
-        """Phân loại mức độ nghiêm trọng của tấn công (1-5, 5 là nghiêm trọng nhất)"""
-        high_severity = ['DDoS-SYN_Flood', 'DDoS-UDP_Flood', 'DDoS-TCP_Flood', 'DDoS-HTTP_Flood', 
-                        'DoS-SYN_Flood', 'DoS-TCP_Flood', 'DoS-HTTP_Flood', 'Mirai-greeth_flood', 
-                        'Mirai-greip_flood', 'Mirai-udpplain']
-        
-        medium_severity = ['DDoS-RSTFINFlood', 'DDoS-PSHACK_Flood', 'DDoS-ICMP_Flood', 
-                          'DDoS-SynonymousIP_Flood', 'DDoS-ACK_Fragmentation', 'DDoS-UDP_Fragmentation', 
-                          'DDoS-ICMP_Fragmentation', 'DDoS-SlowLoris', 'DoS-UDP_Flood']
-        
-        low_severity = ['Recon-PingSweep', 'Recon-OSScan', 'Recon-PortScan', 'VulnerabilityScan', 
-                       'Recon-HostDiscovery', 'DNS_Spoofing', 'MITM-ArpSpoofing']
-        
-        web_attacks = ['BrowserHijacking', 'Backdoor_Malware', 'XSS', 'Uploading_Attack', 
-                      'SqlInjection', 'CommandInjection', 'DictionaryBruteForce']
-        
-        if attack_type in high_severity:
-            return 5
-        elif attack_type in medium_severity:
-            return 4
-        elif attack_type in low_severity:
-            return 2
-        elif attack_type in web_attacks:
-            return 3
-        else:
-            return 1
