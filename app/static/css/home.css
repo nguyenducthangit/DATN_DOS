@@ -142,16 +142,115 @@ body {
   padding: 5px;
 }
 
-.stat-item {
-  background-color: #f8f9fa;
-  border-radius: 5px;
-  padding: 10px;
-  text-align: center;
-  margin-bottom: 10px; /* Thêm khoảng cách giữa các mục */
+/* Alert styles */
+.alert-item {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    border-left: 4px solid #3498db;
+    background-color: #f8f9fa;
+    font-size: 14px;
+    line-height: 1.4;
 }
+
+.alert-item.severe {
+    border-left-color: #e74c3c;
+    background-color: #fdf2f2;
+    color: #c0392b;
+}
+
+.alert-item.high {
+    border-left-color: #f39c12;
+    background-color: #fef9e7;
+    color: #d68910;
+}
+
+.alert-item.low {
+    border-left-color: #3498db;
+    background-color: #f8f9fa;
+    color: #2980b9;
+}
+
+.alert-item.blocked {
+    border-left-color: #2c3e50;
+    background-color: #ecf0f1;
+    color: #2c3e50;
+}
+
+.alert-time {
+    font-weight: bold;
+    color: #7f8c8d;
+    margin-right: 10px;
+}
+
+.alert-icon {
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.alert-message {
+    font-weight: 500;
+    flex: 1;
+}
+
+.alert-count {
+    font-size: 12px;
+    color: #95a5a6;
+    margin-left: 10px;
+}
+
+.alert-mitigation {
+    font-size: 12px;
+    color: #27ae60;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Stat item styles */
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 2px 0;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #3498db;
+}
+
+.stat-item.header {
+    background-color: #ecf0f1;
+    border-left-color: #2c3e50;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.stat-label {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.stat-label.small {
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #27ae60;
+}
+
+.stat-value.small {
+    font-size: 12px;
+    color: #95a5a6;
+}
+
 .stat-value.small-text {
-  font-size: 12px; /* Giảm kích thước chữ cho danh sách IP dài */
-  word-wrap: break-word; /* Xuống dòng nếu danh sách quá dài */
+    font-size: 10px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Responsive adjustments */

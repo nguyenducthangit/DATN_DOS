@@ -3,15 +3,28 @@ from utils import get_default_interface
 
 class Config:
     def __init__(self):
-        self.interface = os.environ.get('INTERFACE', get_default_interface())
-        self.window_size = float(os.environ.get('WINDOW_SIZE', '1.0'))
-        self.data_retention_minutes = int(os.environ.get('DATA_RETENTION_MINUTES', '10'))
-        self.dashboard_update_interval = int(os.environ.get('DASHBOARD_UPDATE_INTERVAL', '1'))
-        self.model_path = os.environ.get('MODEL_PATH', "models/model_rf.pkl")
-        self.scaler_path = os.environ.get('SCALER_PATH', "models/scaler.pkl")
-        self.encoder_path = os.environ.get('ENCODER_PATH', "models/label_encoder.pkl")
-        self.queue_size = int(os.environ.get('QUEUE_SIZE', '1000'))
-        self.host = os.environ.get('HOST', '0.0.0.0')
-        self.port = int(os.environ.get('PORT', '5000'))
-        self.debug = os.environ.get('DEBUG', 'False').lower() == 'true'
-        self.timestamp_display_duration = int(os.environ.get('TIMESTAMP_DISPLAY_DURATION', '60'))
+        # Network configuration
+        self.interface = "en0"  # Default interface
+        self.host = "0.0.0.0"
+        self.port = 5000
+        
+        # Traffic analysis configuration
+        self.window_size = 1.0  # Time window for traffic analysis (seconds)
+        self.data_retention_minutes = 10  # How long to keep traffic data
+        
+        # Dashboard configuration
+        self.dashboard_update_interval = 1  # Update interval (seconds)
+        self.timestamp_display_duration = 300  # How long to display timestamps (seconds)
+        
+        # Attack detection thresholds
+        self.confidence_threshold = 0.7  # Minimum confidence for attack detection
+        self.rate_threshold = 100  # Minimum packet rate for attack detection
+        self.block_rate_threshold = 1000  # Rate threshold for automatic IP blocking
+        self.block_severity_threshold = 3  # Minimum severity for automatic blocking
+        
+        # Alert configuration
+        self.alert_cooldown_seconds = 30  # Cooldown period for same IP attacks
+        self.max_alerts = 100  # Maximum number of alerts to keep
+        
+        # Debug mode
+        self.debug = False

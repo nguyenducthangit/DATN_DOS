@@ -1,0 +1,8 @@
+2025-07-13 22:35:49,245 - DDoSDetector - INFO - Local IP detected: 192.168.1.5
+2025-07-13 22:35:49,294 - DDoSDetector - INFO - Detector updater thread started
+2025-07-13 22:35:49,295 - DDoSDetector - WARNING - Không tìm thấy tệp: models/model_rf.pkl
+2025-07-13 22:35:49,295 - DDoSDetector - INFO - Local IP for filtering: 192.168.1.5
+2025-07-13 22:35:49,295 - DDoSDetector - INFO - Starting TrafficAnalyzer on interface: en0
+2025-07-13 22:35:49,295 - DDoSDetector - INFO - Traffic capture thread started
+2025-07-13 22:35:49,295 - DDoSDetector - INFO - Starting packet capture on en0 with filter: not host 192.168.1.5
+2025-07-13 22:35:49,295 - DDoSDetector - INFO - Starting web server on 0.0.0.0:5000

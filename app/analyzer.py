@@ -17,13 +17,14 @@ logger = logging.getLogger('DDoSDetector')
 DICT_LABEL_TO_NAME = {v: k for k, v in dict_34_classes.items()}
 
 class TrafficAnalyzer:
-    def __init__(self, interface, window_size=1, detector=None):
+    def __init__(self, interface, window_size=1, detector=None, config=None):
         self.interface = interface
         self.window_size = window_size
         self.flows = defaultdict(list)
         self.start_time = time.time()
         self.model = self.load_model()
         self.detector = detector
+        self.config = config
         self.running = True
         self.local_ip = socket.gethostbyname(socket.gethostname())
         logger.info(f"Local IP for filtering: {self.local_ip}")
@@ -208,6 +209,9 @@ class TrafficAnalyzer:
 
                 # Dự đoán
                 y_pred_enc = self.model.predict(feature_vector_scaled)[0]
+                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
+                max_prob = attack_prob.max()
+                
                 # Giải mã tên loại tấn công (chuỗi)
                 try:
                     attack_type = self.label_encoder.inverse_transform([y_pred_enc])[0]
@@ -216,13 +220,23 @@ class TrafficAnalyzer:
                     attack_type = DICT_LABEL_TO_NAME.get(y_pred_enc, str(y_pred_enc))
                 features['attack_type'] = attack_type
 
-                attack_prob = self.model.predict_proba(feature_vector_scaled)[0]
-                is_attack = attack_type != 'BenignTraffic'
+                # Thêm ngưỡng tin cậy để giảm false positive
+                CONFIDENCE_THRESHOLD = self.config.confidence_threshold if self.config else 0.7
+                RATE_THRESHOLD = self.config.rate_threshold if self.config else 100
+                
+                is_attack = (attack_type != 'BenignTraffic' and 
+                           max_prob > CONFIDENCE_THRESHOLD and 
+                           features.get('Rate', 0) > RATE_THRESHOLD)
+                
+                # Nếu là tấn công nhưng độ tin cậy thấp, ghi log để debug
+                if attack_type != 'BenignTraffic' and max_prob <= CONFIDENCE_THRESHOLD:
+                    logger.debug(f"Low confidence attack detected: {attack_type} (confidence: {max_prob:.3f})")
+                
                 priority = 1 if is_attack else 0
 
                 logger.info(f"Processed flow {flow_id}: Src={features.get('source ip','')}, Dst={features.get('destination ip','')}, "
-                            f"Rate={features.get('Rate',0):.2f}, Attack prob={attack_prob.max():.2f}, "
-                            f"Attack type={attack_type}, Is attack={is_attack}")
+                            f"Rate={features.get('Rate',0):.2f}, Attack prob={max_prob:.3f}, "
+                            f"Attack type={attack_type}, Is attack={is_attack}, Confidence={max_prob:.3f}")
 
                 try:
                     detector_queue.put((features, is_attack, priority), block=False)
@@ -245,12 +259,6 @@ class TrafficAnalyzer:
     def shutdown(self):
         self.running = False
 
-def run_traffic_analyzer(analyzer):
-    try:
-        logger.info(f"Starting TrafficAnalyzer on interface: {analyzer.interface}")
-        analyzer.start_capture()
-    except Exception as e:
-        logger.error(f"Error in run_traffic_analyzer: {e}", exc_info=True)
 def run_traffic_analyzer(analyzer):
     try:
         logger.info(f"Starting TrafficAnalyzer on interface: {analyzer.interface}")

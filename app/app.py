@@ -10,7 +10,7 @@ from dashboard import setup_dashboard
 
 flask_app = Flask(__name__)
 config = Config()
-detector = DDoSDetector()
+detector = DDoSDetector(config)
 
 dash_app = setup_dashboard(flask_app, detector, config)
 
@@ -114,7 +114,8 @@ if __name__ == '__main__':
     analyzer = TrafficAnalyzer(
         interface=config.interface,
         window_size=config.window_size,
-        detector=detector
+        detector=detector,
+        config=config
     )
     capture_thread = Thread(
         target=run_traffic_analyzer,
